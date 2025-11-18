@@ -9,17 +9,17 @@ OPENAI_KEY = os.getenv("EX_GPT")
 
 
 def send_message(chat_id, text):
-    """텔레그램으로 메시지 보내기"""
+    """텔레그램으로 메시지 보내기 + 응답 로그 찍기"""
     url = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     data = {
         "chat_id": chat_id,
         "text": text,
     }
     try:
-        requests.post(url, json=data, timeout=10)
-    except Exception:
-        # 텔레그램 전송 실패해도 서버는 안 죽게
-        pass
+        r = requests.post(url, json=data, timeout=10)
+        print("TELEGRAM_RESPONSE", r.status_code, r.text)
+    except Exception as e:
+        print("TELEGRAM_ERROR", repr(e))
 
 
 @app.route("/", methods=["GET"])
@@ -31,8 +31,11 @@ def home():
 def webhook():
     """텔레그램 웹훅 엔드포인트"""
     data = request.get_json(silent=True) or {}
+    print("INCOMING_UPDATE", data)  # 🔥 들어온 텔레그램 데이터 로그로 찍기
+
     message = data.get("message")
     if not message:
+        print("NO_MESSAGE_FIELD")
         return "no message", 200
 
     chat_id = message["chat"]["id"]
@@ -69,6 +72,7 @@ def webhook():
         res_json = r.json()
         reply = res_json["choices"][0]["message"]["content"]
     except Exception as e:
+        print("OPENAI_ERROR", repr(e))
         reply = "지금 상담 서버에 잠깐 문제가 생겼어요. 조금 있다가 다시 시도해 주세요 🙏"
 
     send_message(chat_id, reply)
