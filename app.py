@@ -1,14 +1,14 @@
 import os
 from flask import Flask, request
 import requests
-import openai
+from openai import OpenAI
 
 app = Flask(__name__)
 
 TELEGRAM_TOKEN = os.getenv("BOT_KEY")
 OPENAI_KEY = os.getenv("EX_GPT")
 
-openai.api_key = OPENAI_KEY
+client = OpenAI(api_key=OPENAI_KEY)
 
 
 def send_message(chat_id, text):
@@ -25,20 +25,25 @@ def webhook():
         chat_id = data["message"]["chat"]["id"]
         user_message = data["message"].get("text", "")
 
-        response = openai.ChatCompletion.create(
+        # OpenAI 최신 버전 방식
+        response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are a breakup coach."},
                 {"role": "user", "content": user_message}
             ]
         )
 
-        bot_reply = response["choices"][0]["message"]["content"]
-        send_message(chat_id, bot_reply)
+        ai_reply = response.choices[0].message["content"]
 
-    return {"ok": True}
+        send_message(chat_id, ai_reply)
+
+    return "OK", 200
 
 
 @app.route("/", methods=["GET"])
 def home():
-    return "Telegram bot running!"
+    return "Telegram bot running!", 200
+
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
